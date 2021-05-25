@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import sys
+import numpy as np
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QHeaderView, QMainWindow, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor, qBlue
 from PyQt5.QtCore import Qt
@@ -40,6 +41,10 @@ class MainWindow(QMainWindow):
         widget.setLayout(whole_layout)
         self.setCentralWidget(widget)
 
+        # self.setStyleSheet('')
+
+        # 设置窗口大小不可调节
+
 
 class TableInputArgsSlope(QTableWidget):
 
@@ -59,12 +64,22 @@ class TableInputArgsSlope(QTableWidget):
             ['序号', '平台', '坡高', '水平距', '坡率'])
 
         # 设置水平表头格式
+        # 表头为微软正黑体，9号字体，加粗
         for index in range(self.columnCount()):
             item = self.horizontalHeaderItem(index)
-            item.setFont(QFont("song", 12, QFont.Bold))
-            # item.setForeground(QBrush(Qt.red))
-            item.setBackground(QBrush(Qt.blue))
+            item.setFont(QFont("Microsoft JhengHei", 9, QFont.Bold))
+            # 设置背景颜色不起作用
+            # item.setForeground(QBrush(QColor(128, 255, 0)))
+            # --------------------------------------------------------
+            # 这个function不起作用，先空着
+            item.setBackground(QBrush(Qt.red))
+            # -------------------------------------------------------
+            # self.setAutoFillBackground(True)
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+
+        # 设置表格内单元格格式
+
+        # 获取单元格内的内容
 
         # 设置表格无法选中
         self.setSelectionMode(QTableWidget.SingleSelection)
@@ -89,8 +104,14 @@ class TableInputArgsSlope(QTableWidget):
         # 设置表头不可更改
         self.setItemDelegateForColumn(0, EmptyDelegate(self))
 
+    def transferData(self):
+        """将表格单元格内的值以2维形式输出"""
+        pass
+
 
 class EmptyDelegate(QItemDelegate):
+    """该类可以保证无法修改QTableWidget中的某一列"""
+
     def __init__(self, parent):
         super(EmptyDelegate, self).__init__(parent)
 
