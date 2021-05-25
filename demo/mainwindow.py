@@ -91,6 +91,8 @@ class TableInputArgsSlope(QTableWidget):
 
 
 class EmptyDelegate(QItemDelegate):
+    """该类可以保证无法修改QTableWidget中的某一列"""
+
     def __init__(self, parent):
         super(EmptyDelegate, self).__init__(parent)
 
