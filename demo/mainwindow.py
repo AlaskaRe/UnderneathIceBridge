@@ -5,8 +5,8 @@ import numpy as np
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QHeaderView, QMainWindow, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor, qBlue
 from PyQt5.QtCore import Qt
-from PyQt5.Qt import QRegExp
-
+from PyQt5.QtCore import QRegExp
+from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
 # 设置一些常量，例如，表格行数之类的
 GLOBAL_VAR = 0
 
@@ -65,7 +65,7 @@ class TableInputArgsSlope(QTableWidget):
             self.setRowHeight(acc_row, 20)
 
         self.setHorizontalHeaderLabels(
-            ['序号', '平台', '坡高', '水平距', '坡率'])
+            ['序号', '平台(m)', '坡高(m)', '水平距(m)', '坡率'])
 
         # 设置水平表头格式
         # 表头为微软正黑体，9号字体，加粗
@@ -84,15 +84,31 @@ class TableInputArgsSlope(QTableWidget):
         # 设置表格内单元格格式
         # ________________
         # 没找到怎么设置数据类型的方法，只好用正则表达式来顶替下
+
         for i in range(self.columnCount()):
             for j in range(self.rowCount()):
                 # 设置表格格式
-                # 设置item居中
-                item = self.item(j, i)
-                item.setBackground(Qbrush(Qt.red))
+                # setItem之后，才能对其进行格式设置
+
                 # 设置表头
                 if i == 0:
                     self.setItem(j, i, QTableWidgetItem(str(j+1)))
+                    self.item(j, i).setTextAlignment(
+                        Qt.AlignHCenter | Qt.AlignVCenter)
+                # 设置正则表达式,表示数字
+                else:
+                    # reg_digit = QRegExp("(\d)+")
+                    # validator_digit = QRegExpValidator(reg_digit)
+                    val_double = QDoubleValidator()
+                    # set
+                    val_double.setRange(0, 10000, 3)
+                    val_double.setDecimals(3)
+                    val_double.setNotation(QDoubleValidator.StandardNotation)
+                    cellwidget = QLineEdit()
+                    cellwidget.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
+                    # cellwidget.setValidator(validator_digit)
+                    cellwidget.setValidator(val_double)
+                    self.setCellWidget(j, i, cellwidget)
 
         # 获取单元格内的内容
         # 设置表格无法选中
