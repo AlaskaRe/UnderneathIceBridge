@@ -122,6 +122,7 @@ class TableInputArgsSlope(QTableWidget):
         # 左上角的按钮不能点击
         self.setCornerButtonEnabled(False)
         # 显示Grid
+
         self.setShowGrid(True)
         # 不显示垂直表头
         self.verticalHeader().setVisible(False)
