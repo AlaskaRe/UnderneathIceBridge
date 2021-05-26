@@ -5,6 +5,10 @@ import numpy as np
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QHeaderView, QMainWindow, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor, qBlue
 from PyQt5.QtCore import Qt
+from PyQt5.Qt import QRegExp
+
+# 设置一些常量，例如，表格行数之类的
+GLOBAL_VAR = 0
 
 
 class MainWindow(QMainWindow):
@@ -78,9 +82,19 @@ class TableInputArgsSlope(QTableWidget):
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
         # 设置表格内单元格格式
+        # ________________
+        # 没找到怎么设置数据类型的方法，只好用正则表达式来顶替下
+        for i in range(self.columnCount()):
+            for j in range(self.rowCount()):
+                # 设置表格格式
+                # 设置item居中
+                item = self.item(j, i)
+                item.setBackground(Qbrush(Qt.red))
+                # 设置表头
+                if i == 0:
+                    self.setItem(j, i, QTableWidgetItem(str(j+1)))
 
         # 获取单元格内的内容
-
         # 设置表格无法选中
         self.setSelectionMode(QTableWidget.SingleSelection)
         # Editing starts whenever current item changes
@@ -99,8 +113,10 @@ class TableInputArgsSlope(QTableWidget):
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
         # 设置表头(按照序号排列)
+        """
         for acc in range(1, self.columnCount()+1):
             self.setItem(acc-1, 0, QTableWidgetItem(str(acc)))
+        """
         # 设置表头不可更改
         self.setItemDelegateForColumn(0, EmptyDelegate(self))
 
