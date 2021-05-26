@@ -3,12 +3,14 @@
 import sys
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QHeaderView, QMainWindow, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
-from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor, qBlue
+from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor
 from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
 # 设置一些常量，例如，表格行数之类的
 GLOBAL_VAR = 0
+DECIMAL = 3
+MAX_DIGIT = 10000
 
 
 class MainWindow(QMainWindow):
@@ -25,6 +27,7 @@ class MainWindow(QMainWindow):
         self.label_slopethickness = QLabel("喷护厚度")
         self.linedit_slopethickness = QLineEdit()
         self.table_inputargslope = TableInputArgsSlope()
+
         # self.table_outputargslope = TableOutputArgsSlope()
 
         # layout
@@ -57,7 +60,8 @@ class TableInputArgsSlope(QTableWidget):
         self.setColumnCount(5)
         self.setRowCount(5)
 
-        # 设置表格尺寸
+        self.structed_slope_data = np.zeros((5, 4), dtype=np.float64)
+        # 1设置表格尺寸
         for acc_col in range(5):
             self.setColumnWidth(acc_col, 50)
             # self.resizeColumnsToContents()
@@ -67,9 +71,10 @@ class TableInputArgsSlope(QTableWidget):
         self.setHorizontalHeaderLabels(
             ['序号', '平台(m)', '坡高(m)', '水平距(m)', '坡率'])
 
-        # 设置水平表头格式
-        # 表头为微软正黑体，9号字体，加粗
+        # 2.设置水平表头格式
+        #   表头为微软正黑体，9号字体，加粗
         for index in range(self.columnCount()):
+
             item = self.horizontalHeaderItem(index)
             item.setFont(QFont("Microsoft JhengHei", 9, QFont.Bold))
             # 设置背景颜色不起作用
@@ -81,28 +86,38 @@ class TableInputArgsSlope(QTableWidget):
             # self.setAutoFillBackground(True)
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
-        # 设置表格内单元格格式
-        # ________________
-        # 没找到怎么设置数据类型的方法，只好用正则表达式来顶替下
+        # 3.设置表格内单元格格式
+        #   ________________
+        #   没找到怎么设置数据类型的方法，只好用正则表达式来顶替下
 
         for i in range(self.columnCount()):
             for j in range(self.rowCount()):
                 # 设置表格格式
                 # setItem之后，才能对其进行格式设置
 
-                # 设置表头
+                # 3.1设置表头
                 if i == 0:
                     self.setItem(j, i, QTableWidgetItem(str(j+1)))
                     self.item(j, i).setTextAlignment(
                         Qt.AlignHCenter | Qt.AlignVCenter)
-                # 设置正则表达式,表示数字
+                # 3.2设置正则表达式,表示数字
+                elif i == self.columnCount()-1:
+                    val_double_2 = QDoubleValidator()
+                    val_double_2.setRange(0, 10, DECIMAL)
+                    val_double_2.setDecimals(DECIMAL)
+                    val_double_2.setNotation(QDoubleValidator.StandardNotation)
+                    cellwidget_slope_rate = QLineEdit()
+                    cellwidget_slope_rate.setAlignment(
+                        Qt.AlignVCenter | Qt.AlignHCenter)
+                    cellwidget_slope_rate.setValidator(val_double_2)
+                    self.setCellWidget(j, i, cellwidget_slope_rate)
+                    self.structed_slope_data[j][i] =
                 else:
                     # reg_digit = QRegExp("(\d)+")
                     # validator_digit = QRegExpValidator(reg_digit)
                     val_double = QDoubleValidator()
-                    # set
-                    val_double.setRange(0, 10000, 3)
-                    val_double.setDecimals(3)
+                    val_double.setRange(0, MAX_DIGIT, DECIMAL)
+                    val_double.setDecimals(DECIMAL)
                     val_double.setNotation(QDoubleValidator.StandardNotation)
                     cellwidget = QLineEdit()
                     cellwidget.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
@@ -110,35 +125,38 @@ class TableInputArgsSlope(QTableWidget):
                     cellwidget.setValidator(val_double)
                     self.setCellWidget(j, i, cellwidget)
 
-        # 获取单元格内的内容
-        # 设置表格无法选中
+        # 4.其他项设置，限制表格行为
+        #   设置表格无法选中
         self.setSelectionMode(QTableWidget.SingleSelection)
-        # Editing starts whenever current item changes
+        #   Editing starts whenever current item changes
         self.setEditTriggers(QTableWidget.CurrentChanged)
-        # 单击单元格时，默认行为时选中单元格
+        #   单击单元格时，默认行为时选中单元格
         self.setSelectionBehavior(QTableWidget.SelectItems)
-        # 不能用鼠标多选，选中单个目标
+        #   不能用鼠标多选，选中单个目标
         self.setSelectionMode(QTableWidget.SingleSelection)
-        # 左上角的按钮不能点击
+        #   左上角的按钮不能点击
         self.setCornerButtonEnabled(False)
-        # 显示Grid
-
+        #   显示Grid
         self.setShowGrid(True)
-        # 不显示垂直表头
+        #   不显示垂直表头
         self.verticalHeader().setVisible(False)
-        # 禁止更改列宽
+        #   禁止更改列宽
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-        # 设置表头(按照序号排列)
-        """
-        for acc in range(1, self.columnCount()+1):
-            self.setItem(acc-1, 0, QTableWidgetItem(str(acc)))
-        """
         # 设置表头不可更改
         self.setItemDelegateForColumn(0, EmptyDelegate(self))
 
-    def transferData(self):
+    def transferData(self, e):
         """将表格单元格内的值以2维形式输出"""
+        # 表格内的内容一有变更，即更新数组
+        self.setItem(e.row, e.column, QTableWidgetItem(str(e.row+e.column)))
+        """
+        for i in range(self.columnCount()):
+            for j in range(self.rowCount()):
+                self.cellEntered(j, i).connect(self.get_sheet_value)
+        """
+
+    def get_sheet_value():
         pass
 
 
