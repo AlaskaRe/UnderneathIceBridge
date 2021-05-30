@@ -12,6 +12,12 @@ GLOBAL_VAR = 0
 DECIMAL = 3
 MAX_DIGIT = 10000
 
+# 正则表达式
+val_double = QDoubleValidator()
+val_double.setRange(0, MAX_DIGIT, DECIMAL)
+val_double.setDecimals(DECIMAL)
+val_double.setNotation(QDoubleValidator.StandardNotation)
+
 
 class MainWindow(QMainWindow):
 
@@ -20,12 +26,22 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
         self.setWindowTitle("Demo")
 
+        self.value_supportlength = 0
         # 创建widgets
         # Qlabel用于静态现实文字，QLineEdit输入值，QTableWidget用于表格创建
-        self.label_supportlength = QLabel("支护长度")
+        self.label_supportlength = QLabel("支护长度(m)")
         self.linedit_supportlength = QLineEdit()
-        self.label_slopethickness = QLabel("喷护厚度")
+        self.linedit_supportlength.setValidator(val_double)
+        try:
+            self.value_supportlength = float(self.linedit_supportlength.text())
+        except ValueError:
+            pass
+        self.linedit_supportlength.textChanged.connect(
+            self.get_updated_length())
+
+        self.label_slopethickness = QLabel("喷护厚度(mm)")
         self.linedit_slopethickness = QLineEdit()
+        self.linedit_slopethickness.setValidator(val_double)
         self.table_inputargslope = TableInputArgsSlope()
 
         # self.table_outputargslope = TableOutputArgsSlope()
@@ -51,6 +67,13 @@ class MainWindow(QMainWindow):
         # self.setStyleSheet('')
 
         # 设置窗口大小不可调节
+    def get_updated_length(self):
+        self.blockSignals(True)
+        try:
+            self.value_supportlength = float(self.linedit_supportlength.text())
+        except ValueError:
+            pass
+        self.blockSignals(False)
 
 
 class TableInputArgsSlope(QTableWidget):
@@ -63,6 +86,7 @@ class TableInputArgsSlope(QTableWidget):
         self.structed_slope_data = np.zeros((5, 4), dtype=np.float64)
         self.change_row_id = 0
         self.change_col_id = 0
+
         # 1设置表格尺寸
         for acc_col in range(5):
             self.setColumnWidth(acc_col, 50)
@@ -123,10 +147,7 @@ class TableInputArgsSlope(QTableWidget):
                 else:
                     # reg_digit = QRegExp("(\d)+")
                     # validator_digit = QRegExpValidator(reg_digit)
-                    val_double = QDoubleValidator()
-                    val_double.setRange(0, MAX_DIGIT, DECIMAL)
-                    val_double.setDecimals(DECIMAL)
-                    val_double.setNotation(QDoubleValidator.StandardNotation)
+
                     cellwidget = QLineEdit()
                     cellwidget.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
                     # cellwidget.setValidator(validator_digit)
@@ -168,7 +189,7 @@ class TableInputArgsSlope(QTableWidget):
     def get_updated(self):
         """表格内的内容有变更，即更新数组"""
 
-        # self.blockSignals(True)
+        self.blockSignals(True)
         for i in range(1, self.columnCount()):
             for j in range(self.rowCount()):
                 cellwidget_lineedit = self.cellWidget(j, i)
@@ -177,8 +198,8 @@ class TableInputArgsSlope(QTableWidget):
                                                 1] = float(cellwidget_lineedit.text())
                 except ValueError:
                     pass
-        print(self.structed_slope_data)
-        # self.blockSignals(False)
+        # print(self.structed_slope_data)
+        self.blockSignals(False)
 
         """
         try:
