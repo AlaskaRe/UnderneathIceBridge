@@ -168,17 +168,17 @@ class TableInputArgsSlope(QTableWidget):
     def get_updated(self):
         """表格内的内容有变更，即更新数组"""
 
-        self.blockSignals(True)
-        for i in range(self.columnCount()):
+        # self.blockSignals(True)
+        for i in range(1, self.columnCount()):
             for j in range(self.rowCount()):
-                cellwidget_lineedit = self.item(j, i)
+                cellwidget_lineedit = self.cellWidget(j, i)
                 try:
                     self.structed_slope_data[j][i -
                                                 1] = float(cellwidget_lineedit.text())
                 except ValueError:
                     pass
         print(self.structed_slope_data)
-        self.blockSignals(False)
+        # self.blockSignals(False)
 
         """
         try:
