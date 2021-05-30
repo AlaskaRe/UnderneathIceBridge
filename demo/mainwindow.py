@@ -61,6 +61,8 @@ class TableInputArgsSlope(QTableWidget):
         self.setRowCount(5)
 
         self.structed_slope_data = np.zeros((5, 4), dtype=np.float64)
+        self.change_row_id = 0
+        self.change_col_id = 0
         # 1设置表格尺寸
         for acc_col in range(5):
             self.setColumnWidth(acc_col, 50)
@@ -116,6 +118,8 @@ class TableInputArgsSlope(QTableWidget):
                                                     1] = float(self.cellWidget(j, i).text())
                     except ValueError:
                         pass
+
+                    cellwidget_slope_rate.textChanged.connect(self.get_updated)
                 else:
                     # reg_digit = QRegExp("(\d)+")
                     # validator_digit = QRegExpValidator(reg_digit)
@@ -134,6 +138,8 @@ class TableInputArgsSlope(QTableWidget):
                                                     1] = float(self.cellWidget(j, i).text())
                     except ValueError:
                         pass
+
+                    cellwidget.textChanged.connect(self.get_updated)
                     # print(self.structed_slope_data)
 
         # 4.其他项设置，限制表格行为
@@ -158,17 +164,30 @@ class TableInputArgsSlope(QTableWidget):
         self.setItemDelegateForColumn(0, EmptyDelegate(self))
 
         # 动态获取表格内的数据
-        self.cellChanged
-
-    def get_updated(self, e):
+        # self.changedItem = []
+    def get_updated(self):
         """表格内的内容有变更，即更新数组"""
+
+        self.blockSignals(True)
+        for i in range(self.columnCount()):
+            for j in range(self.rowCount()):
+                cellwidget_lineedit = self.item(j, i)
+                try:
+                    self.structed_slope_data[j][i -
+                                                1] = float(cellwidget_lineedit.text())
+                except ValueError:
+                    pass
+        print(self.structed_slope_data)
+        self.blockSignals(False)
+
+        """
         try:
-            self.structed_slope_data[e.row][e.column] = float(
-                self.cellWidget(e.row, e.column).text())
+
         except ValueError:
             pass
 
         print(self.structed_slope_data)
+        """
 
 
 class EmptyDelegate(QItemDelegate):
