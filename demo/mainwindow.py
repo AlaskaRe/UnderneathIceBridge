@@ -40,7 +40,7 @@ class MainWindow(QMainWindow):
         self.linedit_slopethickness = InputText()
         self.value_supportthickness = self.linedit_slopethickness.input_value
 
-        self.table_inputargslope = TableInputArgsSlope()
+        self.table_inputargslope = TableInputArgsSlope(self)
 
         # self.table_outputargslope = TableOutputArgsSlope()
 
@@ -76,10 +76,10 @@ class MainWindow(QMainWindow):
 
 class TableInputArgsSlope(QTableWidget):
 
-    def __init__(self, parent=QMainWindow):
-        super(TableInputArgsSlope, self).__init__(5, 5, parent=QMainWindow)
-        # self.setColumnCount(5)
-        # self.setRowCount(5)
+    def __init__(self, outsider: MainWindow):
+        super(TableInputArgsSlope, self).__init__(outsider)
+        self.setColumnCount(5)
+        self.setRowCount(5)
 
         self.change_row_id = 0
         self.change_col_id = 0
@@ -134,11 +134,6 @@ class TableInputArgsSlope(QTableWidget):
                         Qt.AlignVCenter | Qt.AlignHCenter)
                     cellwidget_slope_rate.setValidator(val_double_2)
                     self.setCellWidget(j, i, cellwidget_slope_rate)
-                    try:
-                        parent.structed_slope_data[j][i -
-                                                      1] = float(self.cellWidget(j, i).text())
-                    except ValueError:
-                        pass
 
                     cellwidget_slope_rate.textChanged.connect(self.get_updated)
                 else:
@@ -151,11 +146,6 @@ class TableInputArgsSlope(QTableWidget):
                     cellwidget.setValidator(val_double)
                     self.setCellWidget(j, i, cellwidget)
                     # self.cellWidget(j, i).setText("1")
-                    try:
-                        parent.structed_slope_data[j][i -
-                                                      1] = float(self.cellWidget(j, i).text())
-                    except ValueError:
-                        pass
 
                     cellwidget.textChanged.connect(self.get_updated)
                     # print(self.structed_slope_data)
@@ -183,7 +173,7 @@ class TableInputArgsSlope(QTableWidget):
 
         # 动态获取表格内的数据
         # self.changedItem = []
-    def get_updated(self):
+    def get_updated(self, outsider: QMainWindow):
         """表格内的内容有变更，即更新数组"""
 
         # self.blockSignals(True)
@@ -191,8 +181,8 @@ class TableInputArgsSlope(QTableWidget):
             for j in range(self.rowCount()):
                 cellwidget_lineedit = self.cellWidget(j, i)
                 try:
-                    parent.structed_slope_data[j][i -
-                                                  1] = float(cellwidget_lineedit.text())
+                    outsider.structed_slope_data[j][i -
+                                                    1] = float(cellwidget_lineedit.text())
                 except ValueError:
                     pass
         # print(self.structed_slope_data)
@@ -231,10 +221,11 @@ class InputText(QLineEdit):
             pass
         self.textChanged.connect(self.update_value)
 
-    def update_value(self):
+    def update_value(self, outside_var):
         self.blockSignals(True)
         try:
             self.input_value = float(self.text())
+            outside_var = self.input_value
         except ValueError:
             pass
         # print(self.input_value)
