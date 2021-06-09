@@ -7,10 +7,17 @@ from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor
 from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
+
+
 # 设置一些常量，例如，表格行数之类的
 GLOBAL_VAR = 0
 DECIMAL = 3
 MAX_DIGIT = 10000
+
+global input_sheet_slope_arg = np.zeros((5, 4))
+global output_sheet_slope_data = np.zeros((5, 5))
+global support_structure_length = 0
+global slope_thickness = 0
 
 # 正则表达式
 val_double = QDoubleValidator()
@@ -26,19 +33,15 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
         self.setWindowTitle("Demo")
 
-        self.value_supportlength = 0
-        self.value_supportthickness = 0
-        self.structed_slope_data = np.zeros((5, 4), dtype=np.float64)
-
         # 创建widgets
         # Qlabel用于静态现实文字，QLineEdit输入值，QTableWidget用于表格创建
         self.label_supportlength = QLabel("支护长度(m)")
         self.linedit_supportlength = InputText()
-        self.value_supportlength = self.linedit_supportlength.input_value
+        global SUPPORT_STRUCTURE_LENGTH = self.linedit_supportlength.input_value
 
         self.label_slopethickness = QLabel("喷护厚度(mm)")
         self.linedit_slopethickness = InputText()
-        self.value_supportthickness = self.linedit_slopethickness.input_value
+        SLOPE_THICKNESS = self.linedit_slopethickness.input_value
 
         self.table_inputargslope = TableInputArgsSlope(self)
 
@@ -65,6 +68,7 @@ class MainWindow(QMainWindow):
         # self.setStyleSheet('')
 
         # 设置窗口大小不可调节
+    """
     def get_updated_length(self):
         self.blockSignals(True)
         try:
@@ -72,17 +76,16 @@ class MainWindow(QMainWindow):
         except ValueError:
             pass
         self.blockSignals(False)
+    """
 
 
 class TableInputArgsSlope(QTableWidget):
 
-    def __init__(self, outsider: MainWindow):
-        super(TableInputArgsSlope, self).__init__(outsider)
-        self.setColumnCount(5)
-        self.setRowCount(5)
+    def __init__(self):
+        super(TableInputArgsSlope, self).__init__(5, 5, parent=None)
 
-        self.change_row_id = 0
-        self.change_col_id = 0
+        # self.change_row_id = 0
+        # self.change_col_id = 0
 
         # 1设置表格尺寸
         for acc_col in range(5):
@@ -173,20 +176,20 @@ class TableInputArgsSlope(QTableWidget):
 
         # 动态获取表格内的数据
         # self.changedItem = []
-    def get_updated(self, outsider: QMainWindow):
+    def get_updated(self):
         """表格内的内容有变更，即更新数组"""
-
-        # self.blockSignals(True)
+        global
+        self.blockSignals(True)
         for i in range(1, self.columnCount()):
             for j in range(self.rowCount()):
                 cellwidget_lineedit = self.cellWidget(j, i)
                 try:
-                    outsider.structed_slope_data[j][i -
-                                                    1] = float(cellwidget_lineedit.text())
+                    [j][i -
+                        1] = float(cellwidget_lineedit.text())
                 except ValueError:
                     pass
-        # print(self.structed_slope_data)
-        # self.blockSignals(False)
+        print(INPUT_SHEET_SLOPE_ARG)
+        self.blockSignals(False)
 
         """
         try:
@@ -221,11 +224,11 @@ class InputText(QLineEdit):
             pass
         self.textChanged.connect(self.update_value)
 
-    def update_value(self, outside_var):
+    def update_value(self):
+        global
         self.blockSignals(True)
         try:
             self.input_value = float(self.text())
-            outside_var = self.input_value
         except ValueError:
             pass
         # print(self.input_value)
