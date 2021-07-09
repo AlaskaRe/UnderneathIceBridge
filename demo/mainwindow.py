@@ -80,7 +80,10 @@ def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.nda
     # https://blog.csdn.net/weixin_39975529/article/details/111678130
     # https://www.jianshu.com/p/7a0d9e726c22
     # https://numpy.org/doc/stable/user/quickstart.html#prerequisites
-    opt_sht_slp[5][0] = sum()
+
+    sum_last_row = np.sum(opt_sht_slp, axis=0)
+    for i in range(sum_last_row):
+        opt_sht_slp[5][i] = sum_last_row[i]
 
 
 # 正则表达式
@@ -149,6 +152,9 @@ class TableInputArgsSlope(QTableWidget):
     def __init__(self):
         super(TableInputArgsSlope, self).__init__(5, 5, parent=None)
 
+        # 教程
+        # https://blog.csdn.net/zhulove86/article/details/52599738
+        # https://blog.csdn.net/panrenlong/article/details/79959069
         # 1设置表格尺寸
         for acc_col in range(5):
             self.setColumnWidth(acc_col, 50)
