@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import sys
+import math
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QHeaderView, QMainWindow, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor
@@ -15,7 +16,7 @@ DECIMAL = 3
 MAX_DIGIT = 10000
 
 input_sheet_slope_arg = np.zeros((5, 4))
-output_sheet_slope_data = np.zeros((6, 3))
+output_sheet_slope_data = np.zeros((6, 4))
 support_structure_length = 0.0
 slope_thickness = 0.0
 
@@ -23,18 +24,63 @@ slope_thickness = 0.0
 
 
 def cal_slope_length(horizental: float, vertical: float, ratio: float):
-    if
-    elif horizental = 0:
-        return vertical*(1 + ratio**2)**0.5
+    # 这就涉及到一个问题，检测输入的参数（水平距离、 垂直距离、斜率）是否有效
+    # 在此，本程序的设计理念：
+    # 1.三者为0，则坡长为0
+    # 2.三者有任意两参数不为0，则坡长不为0
+    # ————————————————————————————————————————————————————————————————————————————————————————————————————
+    # 3.三个参数都不为0，计算这组数据是否有效——斜率是否与水平距离、垂直距离相匹配，不匹配自动更正，下次改进
+    # ————————————————————————————————————————————————————————————————————————————————————————————————————
+    # 3.三个参数都不为0，则根据水平距离、垂直距离来进行计算坡长，忽略斜率是否是有效的
+
+    a = horizental == 0
+    b = vertical == 0
+    c = ratio == 0
+    anti_ratio = 0
+    if a and b and c:
+        return 0
+
+    elif (a and b) or (a and c) or (b and c):
+        return 0
+
+    elif (not a) and (not b) and (not c):
+        return math.sqrt(horizental**2+vertical**2)
+
+    elif a:
+        return vertical*math.sqrt((1 + ratio**2))
+
+    elif b:
+        try:
+            anti_ratio = 1/ratio
+        except ZeroDivisionError:
+            return 0
+        return horizental * math.sqrt(1 + anti_ratio**2)
+
+    elif c:
+        return math.sqrt(horizental**2+vertical**2)
 
 
 # 定义函数，计算output_sheet_slope_data
-def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.ndarray, opt_sht_slp: np.ndarray):
 
-    for i in range(3):
-        for j in range(6):
-            if i == 0:
-                opt_sht_slp[j][i] = ipt_sht_slp[]
+
+def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.ndarray(shape=(5, 4))):
+
+    opt_sht_slp = np.zeros((6, 4))
+
+    for j in range(5):
+        net_slp = cal_slope_length(
+            ipt_sht_slp[j][2], ipt_sht_slp[j][1], ipt_sht_slp[j][3])
+
+        opt_sht_slp[j][0] = net_slp + ipt_sht_slp[j][0]
+        opt_sht_slp[j][1] = net_slp
+        opt_sht_slp[j][2] = spt_stc_length * ipt_sht_slp * opt_sht_slp[j][0]
+        opt_sht_slp[j][3] = spt_stc_length * ipt_sht_slp * opt_sht_slp[j][1]
+    # 头疼
+    # https://blog.csdn.net/u014636245/article/details/84181868
+    # https://blog.csdn.net/weixin_39975529/article/details/111678130
+    # https://www.jianshu.com/p/7a0d9e726c22
+    # https://numpy.org/doc/stable/user/quickstart.html#prerequisites
+    opt_sht_slp[5][0] = sum()
 
 
 # 正则表达式
