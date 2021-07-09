@@ -14,10 +14,28 @@ GLOBAL_VAR = 0
 DECIMAL = 3
 MAX_DIGIT = 10000
 
-global input_sheet_slope_arg = np.zeros((5, 4))
-global output_sheet_slope_data = np.zeros((5, 5))
-global support_structure_length = 0
-global slope_thickness = 0
+input_sheet_slope_arg = np.zeros((5, 4))
+output_sheet_slope_data = np.zeros((6, 3))
+support_structure_length = 0.0
+slope_thickness = 0.0
+
+# 计算坡长
+
+
+def cal_slope_length(horizental: float, vertical: float, ratio: float):
+    if
+    elif horizental = 0:
+        return vertical*(1 + ratio**2)**0.5
+
+
+# 定义函数，计算output_sheet_slope_data
+def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.ndarray, opt_sht_slp: np.ndarray):
+
+    for i in range(3):
+        for j in range(6):
+            if i == 0:
+                opt_sht_slp[j][i] = ipt_sht_slp[]
+
 
 # 正则表达式
 val_double = QDoubleValidator()
@@ -35,15 +53,16 @@ class MainWindow(QMainWindow):
 
         # 创建widgets
         # Qlabel用于静态现实文字，QLineEdit输入值，QTableWidget用于表格创建
+        global support_structure_length
+        global slope_thickness
         self.label_supportlength = QLabel("支护长度(m)")
-        self.linedit_supportlength = InputText()
-        global SUPPORT_STRUCTURE_LENGTH = self.linedit_supportlength.input_value
+        self.linedit_supportlength = InputText(
+            input_value=support_structure_length)
 
         self.label_slopethickness = QLabel("喷护厚度(mm)")
-        self.linedit_slopethickness = InputText()
-        SLOPE_THICKNESS = self.linedit_slopethickness.input_value
+        self.linedit_slopethickness = InputText(input_value=slope_thickness)
 
-        self.table_inputargslope = TableInputArgsSlope(self)
+        self.table_inputargslope = TableInputArgsSlope()
 
         # self.table_outputargslope = TableOutputArgsSlope()
 
@@ -83,9 +102,6 @@ class TableInputArgsSlope(QTableWidget):
 
     def __init__(self):
         super(TableInputArgsSlope, self).__init__(5, 5, parent=None)
-
-        # self.change_row_id = 0
-        # self.change_col_id = 0
 
         # 1设置表格尺寸
         for acc_col in range(5):
@@ -178,17 +194,18 @@ class TableInputArgsSlope(QTableWidget):
         # self.changedItem = []
     def get_updated(self):
         """表格内的内容有变更，即更新数组"""
-        global
+        global input_sheet_slope_arg
         self.blockSignals(True)
         for i in range(1, self.columnCount()):
             for j in range(self.rowCount()):
                 cellwidget_lineedit = self.cellWidget(j, i)
                 try:
-                    [j][i -
-                        1] = float(cellwidget_lineedit.text())
+                    input_sheet_slope_arg[j][i -
+                                             1] = float(cellwidget_lineedit.text())
                 except ValueError:
                     pass
-        print(INPUT_SHEET_SLOPE_ARG)
+
+        # print(input_sheet_slope_arg)
         self.blockSignals(False)
 
         """
@@ -213,10 +230,10 @@ class EmptyDelegate(QItemDelegate):
 
 class InputText(QLineEdit):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, input_value=0.0):
 
         super(InputText, self).__init__(parent)
-        self.input_value = 0
+        self.input_value = input_value
         self.setValidator(val_double)
         try:
             self.input_value = float(self.text())
@@ -225,20 +242,63 @@ class InputText(QLineEdit):
         self.textChanged.connect(self.update_value)
 
     def update_value(self):
-        global
+        # 不想再创建一个类，根据实例名字的不同来给suppoort_structure_length和slope_thickness赋值
+        # 实例名叫 linedit_supportlength的就给support_structure_length赋值
+        # 实例名叫 linedit_slopethickness的就给slope_thickness赋值
+        # 上述想法太难了，所以弃了
+        # 改为修改类，创建的时候将全局变量传递进去即可。
         self.blockSignals(True)
         try:
             self.input_value = float(self.text())
         except ValueError:
             pass
-        # print(self.input_value)
+        print(self.input_value)
         self.blockSignals(False)
 
 
-"""
 class TableOutputArgsSlope(QTableWidget):
     def __init__(self):
-        super(TableOutputArgsSlope, self).__init__()
+        super(TableOutputArgsSlope, self).__init__(6, 5, parent=None)
+        # 1 设置表格尺寸
+        for acc_col in range(6):
+            self.setColumnWidth(acc_col, 50)
+        for acc_row in range(5):
+            self.setRowHeight(acc_row, 20)
+
+        # 2. 设置表头及格式
+        self.setHorizontalHeaderLabels(
+            ['序号', '支护面积（含平台）/m2', '支护面积/m2', '用料/m3'])
+
+        # 表头格式为微软正黑体，9号字体，加粗
+        for index in range(self.columnCount()):
+            item = self.horizontalHeaderItem(index)
+            item.setFont(QFont("Microsoft JhengHei", 9, QFont.Bold))
+            # 设置背景颜色不起作用
+            # item.setForeground(QBrush(QColor(128, 255, 0)))
+            # --------------------------------------------------------
+            # 这个function不起作用，先空着
+            item.setBackground(QBrush(Qt.red))
+            # -------------------------------------------------------
+            # self.setAutoFillBackground(True)
+            item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+
+        # 3. 设置表格内单元格式
+        for i in range(self.columnCount()):
+
+            for j in range(self.rowCount()):
+                # 设置表格格式
+
+                # 3.1 设置表头
+                if i == 0:
+                    # 设置第一列为序号
+                    self.setItem(j, i, QTableWidgetItem(str(j+1)))
+
+                self.item(j, i).setTextAlignment(
+                    Qt.AlignHCenter | Qt.AlignVCenter)
+
+                # 3.2 设置正则表达式
+
+        """
         self.setCornerButtonEnabled(False)
         self.showGrid()
         self.outargsslope = QStandardItemModel(6, 4)
@@ -247,7 +307,8 @@ class TableOutputArgsSlope(QTableWidget):
         sumlabel = QStandardItem("汇总")
         self.outargsslope.setItem(5, 0, sumlabel)
         self.setModel(self.outargsslope)
-"""
+        """
+
 
 if __name__ == '__main__':
 
