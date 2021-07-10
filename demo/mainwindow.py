@@ -114,7 +114,7 @@ class MainWindow(QMainWindow):
 
         self.table_inputargslope = TableInputArgsSlope()
 
-        # self.table_outputargslope = TableOutputArgsSlope()
+        self.table_outputargslope = TableOutputArgsSlope()
 
         # layout
         # 整体为垂直布置，第一行为水平布置，第一行与其他widgets呈垂直布置
@@ -128,6 +128,7 @@ class MainWindow(QMainWindow):
 
         whole_layout.addLayout(sub_layout)
         whole_layout.addWidget(self.table_inputargslope)
+        whole_layout.addWidget(self.table_outputargslope)
         # whole_layout.addWidget(self.table_outputargslope)
 
         widget = QWidget()
@@ -340,13 +341,15 @@ class TableOutputArgsSlope(QTableWidget):
                     self.setItem(j, i, QTableWidgetItem(str(j+1)))
                 else:
                     # 此处涉及到这个数组的数据小数位数问题
-                    self.setItem(j, i, QTableWidgetItem(
-                        str(output_sheet_slope_data[j][i+1])))
+                    inner_data = round(
+                        output_sheet_slope_data[j][i-1], DECIMAL)
+                    self.setItem(j, i, QTableWidgetItem(str(inner_data)))
 
                 self.item(j, i).setTextAlignment(
                     Qt.AlignHCenter | Qt.AlignVCenter)
+
         # 限制表格行为
-        # self.setSelection(QTableWidget.SingleSelection)
+
         self.setEditTriggers(QTableWidget.NoEditTriggers)
         self.setSelectionBehavior(QTableWidget.SelectItems)
         self.setSelectionMode(QTableWidget.SingleSelection)
@@ -361,6 +364,9 @@ class TableOutputArgsSlope(QTableWidget):
 
     def update_data(self):
         # 这里需要用到线程，动态的获取全局变量output_sheet_slope_data更新显示
+        # https://www.ddpool.cn/article/77285.html
+        # https://blog.csdn.net/jia666666/article/details/81674427
+        # https://www.jb51.net/article/163258.htm
         global input_sheet_slope_arg
         global output_sheet_slope_data
         global support_structure_length
