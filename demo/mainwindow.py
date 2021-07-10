@@ -3,11 +3,12 @@
 import sys
 import math
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QHeaderView, QMainWindow, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QHeaderView, QMainWindow, QTabWidget, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor
 from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
+from numpy.core.numeric import False_
 
 
 # 设置一些常量，例如，表格行数之类的
@@ -59,7 +60,7 @@ def cal_slope_length(horizental: float, vertical: float, ratio: float):
             return 0
         return horizental * math.sqrt(1 + anti_ratio**2)
 
-    else:
+    elif c:
         return math.sqrt(horizental**2+vertical**2)
 
 
@@ -82,10 +83,8 @@ def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.nda
     # https://numpy.org/doc/stable/user/quickstart.html#prerequisites
 
     sum_last_row = np.sum(opt_sht_slp, axis=0)
-    j = 0
-    for i in sum_last_row:
-        opt_sht_slp[5][j] = i
-        j += 1
+    for i in range(4):
+        opt_sht_slp[5][i] = sum_last_row[i]
 
 
 # 正则表达式
@@ -244,11 +243,10 @@ class TableInputArgsSlope(QTableWidget):
         # 设置表头不可更改
         self.setItemDelegateForColumn(0, EmptyDelegate(self))
 
-        # 动态获取表格内的数据
-        # self.changedItem = []
     def get_updated(self):
         """表格内的内容有变更，即更新数组"""
         global input_sheet_slope_arg
+
         self.blockSignals(True)
         for i in range(1, self.columnCount()):
             for j in range(self.rowCount()):
@@ -256,6 +254,7 @@ class TableInputArgsSlope(QTableWidget):
                 try:
                     input_sheet_slope_arg[j][i -
                                              1] = float(cellwidget_lineedit.text())
+
                 except ValueError:
                     pass
 
@@ -321,19 +320,12 @@ class TableOutputArgsSlope(QTableWidget):
 
         # 2. 设置表头及格式
         self.setHorizontalHeaderLabels(
-            ['序号', '支护面积（含平台）/m2', '支护面积/m2', '用料/m3'])
+            ['序号', '支护面积（含平台）/m2', '支护面积/m2', '用料(含平台)/m3', '用料(不含平台)/m3'])
 
         # 表头格式为微软正黑体，9号字体，加粗
         for index in range(self.columnCount()):
             item = self.horizontalHeaderItem(index)
             item.setFont(QFont("Microsoft JhengHei", 9, QFont.Bold))
-            # 设置背景颜色不起作用
-            # item.setForeground(QBrush(QColor(128, 255, 0)))
-            # --------------------------------------------------------
-            # 这个function不起作用，先空着
-            item.setBackground(QBrush(Qt.red))
-            # -------------------------------------------------------
-            # self.setAutoFillBackground(True)
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
         # 3. 设置表格内单元格式
@@ -341,27 +333,40 @@ class TableOutputArgsSlope(QTableWidget):
 
             for j in range(self.rowCount()):
                 # 设置表格格式
-
+                global output_sheet_slope_data
                 # 3.1 设置表头
                 if i == 0:
                     # 设置第一列为序号
                     self.setItem(j, i, QTableWidgetItem(str(j+1)))
+                else:
+                    # 此处涉及到这个数组的数据小数位数问题
+                    self.setItem(j, i, QTableWidgetItem(
+                        str(output_sheet_slope_data[j][i+1])))
 
                 self.item(j, i).setTextAlignment(
                     Qt.AlignHCenter | Qt.AlignVCenter)
-
-                # 3.2 设置正则表达式
-
-        """
+        # 限制表格行为
+        # self.setSelection(QTableWidget.SingleSelection)
+        self.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.setSelectionBehavior(QTableWidget.SelectItems)
+        self.setSelectionMode(QTableWidget.SingleSelection)
+        #   左上角的按钮不能点击
         self.setCornerButtonEnabled(False)
-        self.showGrid()
-        self.outargsslope = QStandardItemModel(6, 4)
-        self.outargsslope.setHorizontalHeaderLabels(
-            ['序号', '支护面积（含平台）', '支护面积', '用料'])
-        sumlabel = QStandardItem("汇总")
-        self.outargsslope.setItem(5, 0, sumlabel)
-        self.setModel(self.outargsslope)
-        """
+        #   显示Grid
+        self.setShowGrid(True)
+        #   不显示垂直表头
+        self.verticalHeader().setVisible(False)
+        #   禁止更改列宽
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+    def update_data(self):
+        # 这里需要用到线程，动态的获取全局变量output_sheet_slope_data更新显示
+        global input_sheet_slope_arg
+        global output_sheet_slope_data
+        global support_structure_length
+        global slope_thickness
+        update_slope_data(support_structure_length, slope_thickness,
+                          input_sheet_slope_arg, output_sheet_slope_data)
 
 
 if __name__ == '__main__':
