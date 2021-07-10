@@ -61,10 +61,9 @@ def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.nda
     # https://numpy.org/doc/stable/user/quickstart.html#prerequisites
 
     sum_last_row = np.sum(opt_sht_slp, axis=0)
-    j = 0
-    for i in sum_last_row:
-        opt_sht_slp[5][j] = i
-        j += 1
+    for i in range(4):
+        opt_sht_slp[5][i] = sum_last_row[i]
+        print(opt_sht_slp)
 
 
 # c = cal_slope_length(1, , 1)
