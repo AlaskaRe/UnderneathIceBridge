@@ -5,10 +5,9 @@ import math
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QHeaderView, QMainWindow, QTabWidget, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
-from numpy.core.numeric import False_
 
 
 # 设置一些常量，例如，表格行数之类的
@@ -67,13 +66,15 @@ def cal_slope_length(horizental: float, vertical: float, ratio: float):
 def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.ndarray(shape=(5, 4)), opt_sht_slp: np.ndarray(shape=(6, 4))):
 
     # 定义函数，计算output_sheet_slope_data
+    for i in range(4):
+        opt_sht_slp[5][i] = 0.0
 
     for j in range(5):
         net_slp = cal_slope_length(
             ipt_sht_slp[j][2], ipt_sht_slp[j][1], ipt_sht_slp[j][3])
 
-        opt_sht_slp[j][0] = net_slp + ipt_sht_slp[j][0]
-        opt_sht_slp[j][1] = net_slp
+        opt_sht_slp[j][0] = (net_slp + ipt_sht_slp[j][0])*spt_stc_length
+        opt_sht_slp[j][1] = net_slp * spt_stc_length
         opt_sht_slp[j][2] = spt_stc_length * slp_thk * opt_sht_slp[j][0]
         opt_sht_slp[j][3] = spt_stc_length * slp_thk * opt_sht_slp[j][1]
 
@@ -94,6 +95,39 @@ val_double.setDecimals(DECIMAL)
 val_double.setNotation(QDoubleValidator.StandardNotation)
 
 
+class Progress(QThread):
+
+    # https://stackoverflow.com/questions/3756510/pyqt-pyobject-equivalent-when-using-new-style-signals-slots
+    cal_signal = pyqtSignal()
+
+    def __init__(self, parent=None):
+        # https://www.ddpool.cn/article/77285.html
+        # https://blog.csdn.net/jia666666/article/details/81674427
+        # https://www.jb51.net/article/163258.htm
+        super(Progress, self).__init__(parent)
+
+    def run(self):
+        global input_sheet_slope_arg
+        global output_sheet_slope_data
+        global support_structure_length
+        global slope_thickness
+        update_slope_data(support_structure_length, slope_thickness,
+                          input_sheet_slope_arg, output_sheet_slope_data)
+
+        self.cal_signal.emit()
+        # self.sleep(1)
+
+
+class EmptyDelegate(QItemDelegate):
+    """该类可以保证无法修改QTableWidget中的某一列"""
+
+    def __init__(self, parent):
+        super(EmptyDelegate, self).__init__(parent)
+
+    def createEditor(self, QWidget, QStyleOptionViewItem, QModelIndex):
+        return None
+
+
 class MainWindow(QMainWindow):
 
     def __init__(self):
@@ -106,15 +140,17 @@ class MainWindow(QMainWindow):
         global support_structure_length
         global slope_thickness
         self.label_supportlength = QLabel("支护长度(m)")
-        self.linedit_supportlength = InputText(
-            input_value=support_structure_length)
+        self.linedit_supportlength = LengthInputText()
 
         self.label_slopethickness = QLabel("喷护厚度(mm)")
-        self.linedit_slopethickness = InputText(input_value=slope_thickness)
+        self.linedit_slopethickness = ThickInputText()
 
         self.table_inputargslope = TableInputArgsSlope()
 
         self.table_outputargslope = TableOutputArgsSlope()
+        # 自动更新计算结果
+        mainprogress.cal_signal.connect(
+            self.table_outputargslope.update_data)
 
         # layout
         # 整体为垂直布置，第一行为水平布置，第一行与其他widgets呈垂直布置
@@ -221,6 +257,7 @@ class TableInputArgsSlope(QTableWidget):
                     # self.cellWidget(j, i).setText("1")
 
                     cellwidget.textChanged.connect(self.get_updated)
+                    cellwidget.textChanged.connect(mainprogress.start)
                     # print(self.structed_slope_data)
 
         # 4.其他项设置，限制表格行为
@@ -272,44 +309,6 @@ class TableInputArgsSlope(QTableWidget):
         """
 
 
-class EmptyDelegate(QItemDelegate):
-    """该类可以保证无法修改QTableWidget中的某一列"""
-
-    def __init__(self, parent):
-        super(EmptyDelegate, self).__init__(parent)
-
-    def createEditor(self, QWidget, QStyleOptionViewItem, QModelIndex):
-        return None
-
-
-class InputText(QLineEdit):
-
-    def __init__(self, parent=None, input_value=0.0):
-
-        super(InputText, self).__init__(parent)
-        self.input_value = input_value
-        self.setValidator(val_double)
-        try:
-            self.input_value = float(self.text())
-        except ValueError:
-            pass
-        self.textChanged.connect(self.update_value)
-
-    def update_value(self):
-        # 不想再创建一个类，根据实例名字的不同来给suppoort_structure_length和slope_thickness赋值
-        # 实例名叫 linedit_supportlength的就给support_structure_length赋值
-        # 实例名叫 linedit_slopethickness的就给slope_thickness赋值
-        # 上述想法太难了，所以弃了
-        # 改为修改类，创建的时候将全局变量传递进去即可。
-        self.blockSignals(True)
-        try:
-            self.input_value = float(self.text())
-        except ValueError:
-            pass
-        print(self.input_value)
-        self.blockSignals(False)
-
-
 class TableOutputArgsSlope(QTableWidget):
     def __init__(self):
         super(TableOutputArgsSlope, self).__init__(6, 5, parent=None)
@@ -340,10 +339,7 @@ class TableOutputArgsSlope(QTableWidget):
                     # 设置第一列为序号
                     self.setItem(j, i, QTableWidgetItem(str(j+1)))
                 else:
-                    # 此处涉及到这个数组的数据小数位数问题
-                    inner_data = round(
-                        output_sheet_slope_data[j][i-1], DECIMAL)
-                    self.setItem(j, i, QTableWidgetItem(str(inner_data)))
+                    self.update_data()
 
                 self.item(j, i).setTextAlignment(
                     Qt.AlignHCenter | Qt.AlignVCenter)
@@ -364,16 +360,71 @@ class TableOutputArgsSlope(QTableWidget):
 
     def update_data(self):
         # 这里需要用到线程，动态的获取全局变量output_sheet_slope_data更新显示
-        # https://www.ddpool.cn/article/77285.html
-        # https://blog.csdn.net/jia666666/article/details/81674427
-        # https://www.jb51.net/article/163258.htm
-        global input_sheet_slope_arg
         global output_sheet_slope_data
-        global support_structure_length
-        global slope_thickness
-        update_slope_data(support_structure_length, slope_thickness,
-                          input_sheet_slope_arg, output_sheet_slope_data)
+        for i in range(6):
+            for j in range(4):
+                # 此处涉及到这个数组的数据小数位数问题
+                inner_data = round(
+                    output_sheet_slope_data[i][j], DECIMAL)
+                self.setItem(i, j+1, QTableWidgetItem(str(inner_data)))
 
+
+class LengthInputText(QLineEdit):
+
+    def __init__(self, parent=None):
+
+        super(LengthInputText, self).__init__(parent)
+        # self.input_value = input_value
+        self.setValidator(val_double)
+        try:
+            self.input_value = float(self.text())
+        except ValueError:
+            pass
+        self.textChanged.connect(self.update_value)
+        self.textChanged.connect(mainprogress.start)
+
+    def update_value(self):
+        # 不想再创建一个类，根据实例名字的不同来给suppoort_structure_length和slope_thickness赋值
+        # 实例名叫 linedit_supportlength的就给support_structure_length赋值
+        # 实例名叫 linedit_slopethickness的就给slope_thickness赋值
+        # 上述想法太难了，所以弃了
+        # 改为修改类，创建的时候将全局变量传递进去即可。
+        self.blockSignals(True)
+        global support_structure_length
+        try:
+            support_structure_length = float(self.text())
+        except ValueError:
+            pass
+        # print(self.input_value)
+        self.blockSignals(False)
+
+
+class ThickInputText(QLineEdit):
+
+    def __init__(self, parent=None):
+
+        super(ThickInputText, self).__init__(parent)
+        # self.input_value = input_value
+        self.setValidator(val_double)
+        try:
+            self.input_value = float(self.text())
+        except ValueError:
+            pass
+        self.textChanged.connect(self.update_value)
+        self.textChanged.connect(mainprogress.start)
+
+    def update_value(self):
+        self.blockSignals(True)
+        global slope_thickness
+        try:
+            slope_thickness = float(self.text())
+        except ValueError:
+            pass
+        # print(self.input_value)
+        self.blockSignals(False)
+
+
+mainprogress = Progress()
 
 if __name__ == '__main__':
 
