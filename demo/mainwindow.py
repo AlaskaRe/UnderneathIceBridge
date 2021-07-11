@@ -75,8 +75,8 @@ def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.nda
 
         opt_sht_slp[j][0] = (net_slp + ipt_sht_slp[j][0])*spt_stc_length
         opt_sht_slp[j][1] = net_slp * spt_stc_length
-        opt_sht_slp[j][2] = spt_stc_length * slp_thk * opt_sht_slp[j][0]
-        opt_sht_slp[j][3] = spt_stc_length * slp_thk * opt_sht_slp[j][1]
+        opt_sht_slp[j][2] = (spt_stc_length * slp_thk * opt_sht_slp[j][0])/1000
+        opt_sht_slp[j][3] = (spt_stc_length * slp_thk * opt_sht_slp[j][1])/1000
 
     # https://blog.csdn.net/u014636245/article/details/84181868
     # https://blog.csdn.net/weixin_39975529/article/details/111678130
@@ -245,6 +245,8 @@ class TableInputArgsSlope(QTableWidget):
                     self.setCellWidget(j, i, cellwidget_slope_rate)
 
                     cellwidget_slope_rate.textChanged.connect(self.get_updated)
+                    cellwidget_slope_rate.textChanged.connect(
+                        mainprogress.start)
                 else:
                     # reg_digit = QRegExp("(\d)+")
                     # validator_digit = QRegExpValidator(reg_digit)
@@ -338,11 +340,13 @@ class TableOutputArgsSlope(QTableWidget):
                 if i == 0:
                     # 设置第一列为序号
                     self.setItem(j, i, QTableWidgetItem(str(j+1)))
+                    if j == 5:
+
+                        self.setItem(j, i, QTableWidgetItem('汇总'))
                 else:
                     self.update_data()
 
-                self.item(j, i).setTextAlignment(
-                    Qt.AlignHCenter | Qt.AlignVCenter)
+                # self.item(j, i).setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
         # 限制表格行为
 
