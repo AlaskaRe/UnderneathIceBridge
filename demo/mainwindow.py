@@ -8,6 +8,7 @@ from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
+from numpy.core.fromnumeric import shape
 
 
 # 设置一些常量，例如，表格行数之类的
@@ -19,8 +20,6 @@ input_sheet_slope_arg = np.zeros((5, 4))
 output_sheet_slope_data = np.zeros((6, 4))
 support_structure_length = 0.0
 slope_thickness = 0.0
-
-# 计算坡长
 
 
 def cal_slope_length(horizental: float, vertical: float, ratio: float):
@@ -88,6 +87,12 @@ def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.nda
         opt_sht_slp[5][i] = sum_last_row[i]
 
 
+def cal_earth_nail(spt_stc_length: float, ipt_sht_earth_nail: np.ndarray(shape=(15, 4))):
+    # 新坑，ipt_sht_earth_nail是个[15][4]数组，最后一列数组的数据类型为文本型
+
+    pass
+
+
 # 正则表达式
 val_double = QDoubleValidator()
 val_double.setRange(0, MAX_DIGIT, DECIMAL)
@@ -149,7 +154,7 @@ class MainWindow(QMainWindow):
 
         self.table_outputargslope = TableOutputArgsSlope()
         # 自动更新计算结果
-        mainprogress.cal_signal.connect(
+        slopeprogress.cal_signal.connect(
             self.table_outputargslope.update_data)
 
         # layout
@@ -246,7 +251,7 @@ class TableInputArgsSlope(QTableWidget):
 
                     cellwidget_slope_rate.textChanged.connect(self.get_updated)
                     cellwidget_slope_rate.textChanged.connect(
-                        mainprogress.start)
+                        slopeprogress.start)
                 else:
                     # reg_digit = QRegExp("(\d)+")
                     # validator_digit = QRegExpValidator(reg_digit)
@@ -259,7 +264,7 @@ class TableInputArgsSlope(QTableWidget):
                     # self.cellWidget(j, i).setText("1")
 
                     cellwidget.textChanged.connect(self.get_updated)
-                    cellwidget.textChanged.connect(mainprogress.start)
+                    cellwidget.textChanged.connect(slopeprogress .start)
                     # print(self.structed_slope_data)
 
         # 4.其他项设置，限制表格行为
@@ -385,7 +390,7 @@ class LengthInputText(QLineEdit):
         except ValueError:
             pass
         self.textChanged.connect(self.update_value)
-        self.textChanged.connect(mainprogress.start)
+        self.textChanged.connect(slopeprogress.start)
 
     def update_value(self):
         # 不想再创建一个类，根据实例名字的不同来给suppoort_structure_length和slope_thickness赋值
@@ -415,7 +420,7 @@ class ThickInputText(QLineEdit):
         except ValueError:
             pass
         self.textChanged.connect(self.update_value)
-        self.textChanged.connect(mainprogress.start)
+        self.textChanged.connect(slopeprogress.start)
 
     def update_value(self):
         self.blockSignals(True)
@@ -428,7 +433,7 @@ class ThickInputText(QLineEdit):
         self.blockSignals(False)
 
 
-mainprogress = Progress()
+slopeprogress = Progress()
 
 if __name__ == '__main__':
 
