@@ -1,6 +1,5 @@
 # -*- coding:utf-8 -*-
 
-from _typeshed import IdentityFunction
 import sys
 import math
 import numpy as np
@@ -10,6 +9,24 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
 from numpy.core.fromnumeric import shape
+
+# 定义正则表达式
+
+
+class Validator(QDoubleValidator):
+    def __init__(self):
+        """
+        新坑
+        创建新类
+        新加三个参数，最小值，最大值，小数位数
+        """
+        pass
+
+
+double_validator = QDoubleValidator()
+double_validator.setRange(0, 10, 3)
+# double_validator.setDecimals(3)
+double_validator.setNotation(QDoubleValidator.StandardNotation)
 
 
 class MainWindow(QMainWindow):
@@ -69,77 +86,49 @@ class TableInputArgsSlope(QTableWidget):
     def __init__(self):
         super(TableInputArgsSlope, self).__init__(5, 5, parent=None)
 
-        # 教程
-        # https://blog.csdn.net/zhulove86/article/details/52599738
-        # https://blog.csdn.net/panrenlong/article/details/79959069
-        # 1设置表格尺寸
+        self.sheet = np.zeros((5, 4))
+        self.initUI()
+
+    def initUI(self):
+
+        # 1.设置表格尺寸
         for acc_col in range(5):
             self.setColumnWidth(acc_col, 50)
-            # self.resizeColumnsToContents()
+
         for acc_row in range(5):
             self.setRowHeight(acc_row, 20)
 
+        # 2.设置表头
         self.setHorizontalHeaderLabels(
             ['序号', '平台(m)', '坡高(m)', '水平距(m)', '坡率'])
-
-        # 2.设置水平表头格式
-        #   表头为微软正黑体，9号字体，加粗
         for index in range(self.columnCount()):
-
             item = self.horizontalHeaderItem(index)
             item.setFont(QFont("Microsoft JhengHei", 9, QFont.Bold))
-            # 设置背景颜色不起作用
-            # item.setForeground(QBrush(QColor(128, 255, 0)))
-            # --------------------------------------------------------
-            # 这个function不起作用，先空着
-            item.setBackground(QBrush(Qt.red))
-            # -------------------------------------------------------
-            # self.setAutoFillBackground(True)
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
         # 3.设置表格内单元格格式
-        #   ________________
-        #   没找到怎么设置数据类型的方法，只好用正则表达式来顶替下
-
-        for i in range(self.columnCount()):
+        for i in range(1, self.columnCount()):
             for j in range(self.rowCount()):
-                # 设置表格格式
-                # setItem之后，才能对其进行格式设置
 
-                # 3.1设置表头
+                # self.cellWidget[j][i] = QLineEdit()
+                # ———————————————————明天试试这个语法可行不———————————————————
+                cellwidget = QLineEdit()
+                cellwidget.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
+
                 if i == 0:
+                    # 设置第一列为数字序号
                     self.setItem(j, i, QTableWidgetItem(str(j+1)))
-                    self.item(j, i).setTextAlignment(
-                        Qt.AlignHCenter | Qt.AlignVCenter)
-                # 3.2设置正则表达式,表示数字
                 elif i == self.columnCount()-1:
-                    val_double_2 = QDoubleValidator()
-                    val_double_2.setRange(0, 10, DECIMAL)
-                    val_double_2.setDecimals(DECIMAL)
-                    val_double_2.setNotation(QDoubleValidator.StandardNotation)
-                    cellwidget_slope_rate = QLineEdit()
-                    cellwidget_slope_rate.setAlignment(
-                        Qt.AlignVCenter | Qt.AlignHCenter)
-                    cellwidget_slope_rate.setValidator(val_double_2)
-                    self.setCellWidget(j, i, cellwidget_slope_rate)
-
-                    cellwidget_slope_rate.textChanged.connect(self.get_updated)
-                    cellwidget_slope_rate.textChanged.connect(
-                        slopeprogress.start)
+                    # 最后一列表示斜率，这个要求数据小数位数3位，小于10
+                    cellwidget.setValidator(double_validator)
+                    self.setCellWidget(j, i, cellwidget)
+                    cellwidget.textChanged.connect(self.update_value)
                 else:
-                    # reg_digit = QRegExp("(\d)+")
-                    # validator_digit = QRegExpValidator(reg_digit)
-
-                    cellwidget = QLineEdit()
-                    cellwidget.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
-                    # cellwidget.setValidator(validator_digit)
+                    # 其他列表示正常
                     cellwidget.setValidator(val_double)
                     self.setCellWidget(j, i, cellwidget)
-                    # self.cellWidget(j, i).setText("1")
-
-                    cellwidget.textChanged.connect(self.get_updated)
-                    cellwidget.textChanged.connect(slopeprogress .start)
-                    # print(self.structed_slope_data)
+                    cellwidget.textChanged.connect(self.update_value)
+                # self.item(j, i).setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
         # 4.其他项设置，限制表格行为
         #   设置表格无法选中
@@ -158,25 +147,23 @@ class TableInputArgsSlope(QTableWidget):
         self.verticalHeader().setVisible(False)
         #   禁止更改列宽
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-
         # 设置表头不可更改
         self.setItemDelegateForColumn(0, EmptyDelegate(self))
 
-    def get_updated(self):
-        """表格内的内容有变更，即更新数组"""
-        global input_sheet_slope_arg
+    def get_value(self):
 
+        return self.sheet
+
+    def update_value(self):
         self.blockSignals(True)
-        for i in range(1, self.columnCount()):
-            for j in range(self.rowCount()):
-                cellwidget_lineedit = self.cellWidget(j, i)
+        # ————————————————————blockSignals方法意义不明————————————————————
+        for i in range(self.rowCount()):
+            for j in range(1, self.columnCount()):
+                cellwidget = self.cellWidget(i, j)
                 try:
-                    input_sheet_slope_arg[j][i -
-                                             1] = float(cellwidget_lineedit.text())
-
+                    self.sheet[i][j] = float(cellwidget.text())
                 except ValueError:
                     pass
-
         self.blockSignals(False)
 
 
