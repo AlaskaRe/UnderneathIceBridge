@@ -171,7 +171,7 @@ class MainWindow(QMainWindow):
         whole_layout.addWidget(self.table_inputargslope)
         whole_layout.addWidget(self.table_outputargslope)
         # whole_layout.addWidget(self.table_outputargslope)
-
+        """"""
         widget = QWidget()
         widget.setLayout(whole_layout)
         self.setCentralWidget(widget)

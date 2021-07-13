@@ -1,32 +1,61 @@
 # -*- coding:utf-8 -*-
 
+
 import sys
 import math
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QHeaderView, QMainWindow, QTabWidget, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
+from PyQt5.QtWidgets import QApplication, QComboBox, QHBoxLayout, QHeaderView, QMainWindow, QTabWidget, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
 from numpy.core.fromnumeric import shape
 
-# 定义正则表达式
+# 定义一些常量
+DECIMAL = 3
+
+# 定义一些线程，对于slopeInterface类，应该需要三个线程
+# 1.支护长度线程
+# 2.支护厚度线程
+# 3.放坡参数线程
+# 这三个线程其中一个启动之后，会调用其他两个线程，调用之后，启动计算函数
 
 
-class Validator(QDoubleValidator):
-    def __init__(self):
+class DigitValidator(QDoubleValidator):
+    def __init__(self, mindigit, maxdigit, dot):
         """
         新坑
         创建新类
         新加三个参数，最小值，最大值，小数位数
+        class 子类名(父类名)：
+            def __init__(self, 参数表， 新的属性)：
+                super().__init__(参数表)
+                self.新的属性 = 新的属性
+
+            def 重定义方法（self, 参数表）：
         """
-        pass
+        super(DigitValidator, self).__init__()
+
+        self.mindigit = mindigit
+        self.maxdigit = maxdigit
+        self.dot = dot
+
+        self.setRange(self.mindigit, self.maxdigit, self.dot)
+        self.setNotation(QDoubleValidator.StandardNotation)
 
 
-double_validator = QDoubleValidator()
-double_validator.setRange(0, 10, 3)
-# double_validator.setDecimals(3)
-double_validator.setNotation(QDoubleValidator.StandardNotation)
+class EmptyDelegate(QItemDelegate):
+    """该类可以保证无法修改QTableWidget中的某一列"""
+
+    def __init__(self, parent):
+        super(EmptyDelegate, self).__init__(parent)
+
+    def createEditor(self, QWidget, QStyleOptionViewItem, QModelIndex):
+        return None
+
+
+ratio_validator = DigitValidator(0, 10, DECIMAL)
+ordnary_validator = DigitValidator(0, 10000, DECIMAL)
 
 
 class MainWindow(QMainWindow):
@@ -38,9 +67,10 @@ class MainWindow(QMainWindow):
 
         # 创建QTabWidget
         self.tabwidget = TabPage()
+        self.setCentralWidget(self.tabwidget)
 
 
-class TabPage(QTableWidget):
+class TabPage(QTabWidget):
     def __init__(self):
         super(TabPage, self).__init__()
 
@@ -58,10 +88,11 @@ class SlopeInterface(QWidget):
 
     def initUI(self):
         self.label_supportlength = QLabel("支护长度/m")
-        self.linedit_supportlength = LengthInputText()
+        self.linedit_supportlength = InputText()
 
         self.label_slopethickness = QLabel("喷护厚度/m")
-        self.linedit_supportlength = LengthInputText()
+        self.linedit_slopethickness = InputText()
+
         self.inputsheet = TableInputArgsSlope()
         self.outputsheet = TableOutputArgsSlope()
 
@@ -74,11 +105,12 @@ class SlopeInterface(QWidget):
         sub_layout.addWidget(self.label_supportlength)
         sub_layout.addWidget(self.linedit_supportlength)
         sub_layout.addWidget(self.label_slopethickness)
-        sub_layout.addWidget(self.label_slopethickness)
+        sub_layout.addWidget(self.linedit_slopethickness)
 
         up_layout.addLayout(sub_layout)
         up_layout.addWidget(self.inputsheet)
         up_layout.addWidget(self.outputsheet)
+        self.setLayout(up_layout)
 
 
 class TableInputArgsSlope(QTableWidget):
@@ -106,8 +138,8 @@ class TableInputArgsSlope(QTableWidget):
             item.setFont(QFont("Microsoft JhengHei", 9, QFont.Bold))
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
-        # 3.设置表格内单元格格式
-        for i in range(1, self.columnCount()):
+        # 3.设置表格内单元格及格式
+        for i in range(self.columnCount()):
             for j in range(self.rowCount()):
 
                 # self.cellWidget[j][i] = QLineEdit()
@@ -120,14 +152,16 @@ class TableInputArgsSlope(QTableWidget):
                     self.setItem(j, i, QTableWidgetItem(str(j+1)))
                 elif i == self.columnCount()-1:
                     # 最后一列表示斜率，这个要求数据小数位数3位，小于10
-                    cellwidget.setValidator(double_validator)
+                    cellwidget.setValidator(ratio_validator)
                     self.setCellWidget(j, i, cellwidget)
                     cellwidget.textChanged.connect(self.update_value)
+                    # 此处也该启动线程，发送信号，信号包含sheet数据
                 else:
-                    # 其他列表示正常
-                    cellwidget.setValidator(val_double)
+                    # 其他列数据要求，小于10000，小数位数3位
+                    cellwidget.setValidator(ordnary_validator)
                     self.setCellWidget(j, i, cellwidget)
                     cellwidget.textChanged.connect(self.update_value)
+                    # 此处也该启动线程，发送信号，信号包含sheet数据
                 # self.item(j, i).setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
         # 4.其他项设置，限制表格行为
@@ -147,7 +181,7 @@ class TableInputArgsSlope(QTableWidget):
         self.verticalHeader().setVisible(False)
         #   禁止更改列宽
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        # 设置表头不可更改
+        #   设置表头不可更改
         self.setItemDelegateForColumn(0, EmptyDelegate(self))
 
     def get_value(self):
@@ -170,6 +204,11 @@ class TableInputArgsSlope(QTableWidget):
 class TableOutputArgsSlope(QTableWidget):
     def __init__(self):
         super(TableOutputArgsSlope, self).__init__(6, 5, parent=None)
+        self.sheet = np.zeros((6, 4))
+        self.initUI()
+        self.insert_sheet()
+
+    def initUI(self):
         # 1 设置表格尺寸
         for acc_col in range(6):
             self.setColumnWidth(acc_col, 50)
@@ -179,33 +218,27 @@ class TableOutputArgsSlope(QTableWidget):
         # 2. 设置表头及格式
         self.setHorizontalHeaderLabels(
             ['序号', '支护面积（含平台）/m2', '支护面积/m2', '用料(含平台)/m3', '用料(不含平台)/m3'])
-
         # 表头格式为微软正黑体，9号字体，加粗
         for index in range(self.columnCount()):
             item = self.horizontalHeaderItem(index)
             item.setFont(QFont("Microsoft JhengHei", 9, QFont.Bold))
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
-        # 3. 设置表格内单元格式
+        # 3. 设置表格内单元及格式
         for i in range(self.columnCount()):
-
             for j in range(self.rowCount()):
-                # 设置表格格式
-                global output_sheet_slope_data
-                # 3.1 设置表头
                 if i == 0:
                     # 设置第一列为序号
+                    # 第一列最后一个为汇总
                     self.setItem(j, i, QTableWidgetItem(str(j+1)))
                     if j == 5:
-
                         self.setItem(j, i, QTableWidgetItem('汇总'))
                 else:
-                    self.update_data()
+                    self.setItem(j, i, QTableWidgetItem('0'))
+                self.item(j, i).setTextAlignment(
+                    Qt.AlignHCenter | Qt.AlignVCenter)
 
-                # self.item(j, i).setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-
-        # 限制表格行为
-
+        # 4.限制表格行为
         self.setEditTriggers(QTableWidget.NoEditTriggers)
         self.setSelectionBehavior(QTableWidget.SelectItems)
         self.setSelectionMode(QTableWidget.SingleSelection)
@@ -218,67 +251,93 @@ class TableOutputArgsSlope(QTableWidget):
         #   禁止更改列宽
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-    def update_data(self):
-        # 这里需要用到线程，动态的获取全局变量output_sheet_slope_data更新显示
-        global output_sheet_slope_data
+    def get_value(self):
+        """
+        返回数组
+        """
+        return self.sheet
+
+    def insert_sheet(self):
+        """
+        将数组sheet写入显示列表
+        """
         for i in range(6):
             for j in range(4):
-                # 此处涉及到这个数组的数据小数位数问题
-                inner_data = round(
-                    output_sheet_slope_data[i][j], DECIMAL)
+                inner_data = round(self.sheet[i][j], DECIMAL)
                 self.setItem(i, j+1, QTableWidgetItem(str(inner_data)))
 
+    def update_value(self):
+        pass
 
-class LengthInputText(QLineEdit):
+
+class TableEarthNail(QTableWidget):
+
+    def __init__(self):
+        super(TableEarthNail, self).__init__(15, 5, parent=None)
+        self.sheet = np.zeros((15, 4))
+        self.initUI()
+
+    def initUI(self):
+
+        # 1.设置表格尺寸
+        for acc_col in range(self.columnCount()):
+            self.setColumnWidth(acc_col, 50)
+        for acc_row in range(self.rowCount()):
+            self.setRowHeight(acc_row, 20)
+
+        # 2设置表头及格式
+        self.setHorizontalHeaderLabels(
+            ['序号', '单根长度/m', '水平间距/m', '材料类型', '总长度'])
+        for index in range(self.columnCount()):
+            item = self.horizontalHeaderItem(index)
+            item.setFont(QFont("Microsoft JhengHei", 9, QFont.Bold))
+            item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+
+        # 3.设置表格内单元及格式
+        for i in range(self.columnCount()):
+            for j in range(self.rowCount()):
+                if i == 0:
+                    # 设置第一列为序号
+                    self.setItem(j, i, QTableWidgetItem(str(j+1)))
+                elif i == 3:
+
+                    # 设置为下拉菜单选项
+                    earthnail_combox = QComboBox()
+                    earthnail_combox.addItem(['钢筋', '锚索', '锚杆'])
+                    self.setItem(j, i, earthnail_combox)
+                    # earthnail_combox.currentIndexChanged.connect()
+                else:
+                    pass
+
+
+class InputText(QLineEdit):
 
     def __init__(self, parent=None):
 
-        super(LengthInputText, self).__init__(parent)
-        # self.input_value = input_value
-        self.setValidator(val_double)
+        super(InputText, self).__init__(parent)
+        self.input_value = 0
+
+        self.setValidator(ordnary_validator)
+        self.textChanged.connect(self.update_value)
+
+        # 线程启动，传出数据，调用函数
+        # self.textChanged.connect(slopeprogress.start)
+
+    def get_value(self):
+        return self.input_value
+
+    def update_value(self):
+        self.blockSignals(True)
         try:
             self.input_value = float(self.text())
         except ValueError:
             pass
-        self.textChanged.connect(self.update_value)
-        self.textChanged.connect(slopeprogress.start)
-
-    def update_value(self):
-        # 不想再创建一个类，根据实例名字的不同来给suppoort_structure_length和slope_thickness赋值
-        # 实例名叫 linedit_supportlength的就给support_structure_length赋值
-        # 实例名叫 linedit_slopethickness的就给slope_thickness赋值
-        # 上述想法太难了，所以弃了
-        # 改为修改类，创建的时候将全局变量传递进去即可。
-        self.blockSignals(True)
-        global support_structure_length
-        try:
-            support_structure_length = float(self.text())
-        except ValueError:
-            pass
-        # print(self.input_value)
         self.blockSignals(False)
 
 
-class ThickInputText(QLineEdit):
+if __name__ == '__main__':
 
-    def __init__(self, parent=None):
-
-        super(ThickInputText, self).__init__(parent)
-        # self.input_value = input_value
-        self.setValidator(val_double)
-        try:
-            self.input_value = float(self.text())
-        except ValueError:
-            pass
-        self.textChanged.connect(self.update_value)
-        self.textChanged.connect(slopeprogress.start)
-
-    def update_value(self):
-        self.blockSignals(True)
-        global slope_thickness
-        try:
-            slope_thickness = float(self.text())
-        except ValueError:
-            pass
-        # print(self.input_value)
-        self.blockSignals(False)
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    app.exec()
