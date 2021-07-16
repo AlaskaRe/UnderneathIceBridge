@@ -6,7 +6,7 @@ import math
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QComboBox, QHBoxLayout, QHeaderView, QMainWindow, QTabWidget, QTableWidgetItem, QVBoxLayout, QWidget, QLabel, QLineEdit,  QTableWidget, QItemDelegate
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QFont, QBrush, QColor
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtCore import QLine, Qt, QThread, pyqtSignal
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
 from numpy.core.fromnumeric import shape
@@ -76,15 +76,25 @@ class TabPage(QTabWidget):
 
         # 创建选项卡窗口
         self.slopepage = SlopeInterface()
+        self.earthnailpage = EarthNailInterface()
 
         # 将选项卡添加到顶层窗口中
         self.addTab(self.slopepage, "放坡支护")
+        self.addTab(self.earthnailpage, "土钉支护")
 
 
 class SlopeInterface(QWidget):
     def __init__(self):
         super(SlopeInterface, self).__init__()
+        # 定义一些参数
+
+        self.length = 0
+        self.thickness = 0
+        self.slopeargs = np.zeros((5, 4))
+        self.quantity = np.zeros((6, 4))
+
         self.initUI()
+        self.make_connection()
 
     def initUI(self):
         self.label_supportlength = QLabel("支护长度/m")
@@ -112,13 +122,93 @@ class SlopeInterface(QWidget):
         up_layout.addWidget(self.outputsheet)
         self.setLayout(up_layout)
 
+    def make_connection(self):
+
+        self.linedit_supportlength.textChanged.connect(self.update_length())
+        self.linedit_slopethickness.textChanged.connect(
+            self.update_thickness())
+        self.inputsheet.valueChanged.connect(self.update_slopeargs())
+
+    def update_length(self):
+        """
+        更新self.length并调用update_quantity()方法更新self.quantity
+        """
+        self.length = self.linedit_supportlength.get_value()
+        self.update_quantity()
+
+    def update_thickness(self):
+        self.thickness = self.linedit_slopethickness.get_value()
+        self.update_quantity()
+
+    def update_slopeargs(self):
+        self.slopeargs = self.inputsheet.get_value()
+        self.update_quantity()
+
+    def update_quantity(self):
+        """
+        计算工作量
+        并将工作量结果插入表格中
+        function(arg1,arg2,aeg3,aeg4)
+        计算结果传入self.outputsheet.sheet中
+        并调用其inset_value()方法
+        """
+        pass
+
+
+class EarthNailInterface(QWidget):
+    def __init__(self):
+        super(EarthNailInterface, self).__init__()
+        self.initUI()
+
+    def initUI(self):
+        self.label_supportlength = QLabel("支护长度/m")
+        self.linedit_supportlength = InputText()
+
+        self.label_slopethickness = QLabel("喷护厚度/m")
+        self.linedit_slopethickness = InputText()
+
+        self.interfacesheet = TableEarthNail()
+
+        self.do_layout()
+
+    def do_layout(self):
+        up_layout = QVBoxLayout()
+        sub_layout = QHBoxLayout()
+
+        sub_layout.addWidget(self.label_supportlength)
+        sub_layout.addWidget(self.linedit_supportlength)
+        sub_layout.addWidget(self.label_slopethickness)
+        sub_layout.addWidget(self.linedit_slopethickness)
+
+        up_layout.addLayout(sub_layout)
+        up_layout.addWidget(self.interfacesheet)
+
+        self.setLayout(up_layout)
+
+
+class AnchorCalbleInterface(QWidget):
+    def __init__(self):
+        super(AnchorCalbleInterface, self).__init__()
+        self.initUI()
+        # self.sheet= np.zeros()
+
+    def initUI(self):
+
+        self.do_layout()
+
+    def do_layout(self):
+        pass
+
 
 class TableInputArgsSlope(QTableWidget):
 
     def __init__(self):
         super(TableInputArgsSlope, self).__init__(5, 5, parent=None)
 
+        # 创建自定义信号，以使外界得以获得内部信号
+        self.valueChanged = pyqtSignal()
         self.sheet = np.zeros((5, 4))
+
         self.initUI()
 
     def initUI(self):
@@ -142,8 +232,6 @@ class TableInputArgsSlope(QTableWidget):
         for i in range(self.columnCount()):
             for j in range(self.rowCount()):
 
-                # self.cellWidget[j][i] = QLineEdit()
-                # ———————————————————明天试试这个语法可行不———————————————————
                 cellwidget = QLineEdit()
                 cellwidget.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
 
@@ -189,13 +277,15 @@ class TableInputArgsSlope(QTableWidget):
         return self.sheet
 
     def update_value(self):
+
+        self.valueChanged.emit()
         self.blockSignals(True)
         # ————————————————————blockSignals方法意义不明————————————————————
         for i in range(self.rowCount()):
             for j in range(1, self.columnCount()):
                 cellwidget = self.cellWidget(i, j)
                 try:
-                    self.sheet[i][j] = float(cellwidget.text())
+                    self.sheet[i][j-1] = float(cellwidget.text())
                 except ValueError:
                     pass
         self.blockSignals(False)
@@ -303,11 +393,44 @@ class TableEarthNail(QTableWidget):
 
                     # 设置为下拉菜单选项
                     earthnail_combox = QComboBox()
-                    earthnail_combox.addItem(['钢筋', '锚索', '锚杆'])
-                    self.setItem(j, i, earthnail_combox)
+                    earthnail_combox.addItems(['钢筋', '锚索', '锚杆'])
+                    self.setCellWidget(j, i, earthnail_combox)
                     # earthnail_combox.currentIndexChanged.connect()
+                elif i == 4:
+                    self.setItem(j, i, QTableWidgetItem('0'))
                 else:
-                    pass
+                    cellwidget = QLineEdit()
+                    cellwidget.setValidator(ordnary_validator)
+                    self.setCellWidget(j, i, cellwidget)
+                    # cellwidget.textChanged.connect(self.update_value)
+
+        # 4.限制表格行为
+        #   设置表格无法选中
+        self.setSelectionMode(QTableWidget.SingleSelection)
+        #   Editing starts whenever current item changes
+        self.setEditTriggers(QTableWidget.CurrentChanged)
+        #   单击单元格时，默认行为时选中单元格
+        self.setSelectionBehavior(QTableWidget.SelectItems)
+        #   不能用鼠标多选，选中单个目标
+        self.setSelectionMode(QTableWidget.SingleSelection)
+        #   左上角的按钮不能点击
+        self.setCornerButtonEnabled(False)
+        #   显示Grid
+        self.setShowGrid(True)
+        #   不显示垂直表头
+        self.verticalHeader().setVisible(False)
+        #   禁止更改列宽
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        #   设置表头不可更改
+        self.setItemDelegateForColumn(0, EmptyDelegate(self))
+        #   设置最后一列不可更改
+        self.setItemDelegateForColumn(4, EmptyDelegate(self))
+
+    def get_value(self):
+        return self.sheet
+
+    def update_value(self):
+        pass
 
 
 class InputText(QLineEdit):
