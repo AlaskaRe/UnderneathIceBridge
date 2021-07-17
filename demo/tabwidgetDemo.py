@@ -14,11 +14,56 @@ from numpy.core.fromnumeric import shape
 # 定义一些常量
 DECIMAL = 3
 
-# 定义一些线程，对于slopeInterface类，应该需要三个线程
-# 1.支护长度线程
-# 2.支护厚度线程
-# 3.放坡参数线程
-# 这三个线程其中一个启动之后，会调用其他两个线程，调用之后，启动计算函数
+# 定义计算函数
+
+
+def cal_slope_length(horizental: float, vertical: float, ratio: float):
+
+    a = horizental == 0
+    b = vertical == 0
+    c = ratio == 0
+    anti_ratio = 0
+    if a and b and c:
+        return 0
+
+    elif (a and b) or (a and c) or (b and c):
+        return 0
+
+    elif (not a) and (not b) and (not c):
+        return math.sqrt(horizental**2+vertical**2)
+
+    elif a:
+        return vertical*math.sqrt((1 + ratio**2))
+
+    elif b:
+        try:
+            anti_ratio = 1/ratio
+        except ZeroDivisionError:
+            return 0
+        return horizental * math.sqrt(1 + anti_ratio**2)
+
+    elif c:
+        return math.sqrt(horizental**2+vertical**2)
+
+
+def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.ndarray(shape=(5, 4)), opt_sht_slp: np.ndarray(shape=(6, 4))):
+
+    # 计算output_sheet_slope_data
+    for i in range(4):
+        opt_sht_slp[5][i] = 0.0
+
+    for j in range(5):
+        net_slp = cal_slope_length(
+            ipt_sht_slp[j][2], ipt_sht_slp[j][1], ipt_sht_slp[j][3])
+
+        opt_sht_slp[j][0] = (net_slp + ipt_sht_slp[j][0])*spt_stc_length
+        opt_sht_slp[j][1] = net_slp * spt_stc_length
+        opt_sht_slp[j][2] = (spt_stc_length * slp_thk * opt_sht_slp[j][0])/1000
+        opt_sht_slp[j][3] = (spt_stc_length * slp_thk * opt_sht_slp[j][1])/1000
+
+    sum_last_row = np.sum(opt_sht_slp, axis=0)
+    for i in range(4):
+        opt_sht_slp[5][i] = sum_last_row[i]
 
 
 class DigitValidator(QDoubleValidator):
@@ -124,10 +169,10 @@ class SlopeInterface(QWidget):
 
     def make_connection(self):
 
-        self.linedit_supportlength.textChanged.connect(self.update_length())
+        self.linedit_supportlength.textChanged.connect(self.update_length)
         self.linedit_slopethickness.textChanged.connect(
-            self.update_thickness())
-        self.inputsheet.valueChanged.connect(self.update_slopeargs())
+            self.update_thickness)
+        self.inputsheet.valueChanged.connect(self.update_slopeargs)
 
     def update_length(self):
         """
@@ -148,11 +193,13 @@ class SlopeInterface(QWidget):
         """
         计算工作量
         并将工作量结果插入表格中
-        function(arg1,arg2,aeg3,aeg4)
         计算结果传入self.outputsheet.sheet中
         并调用其inset_value()方法
         """
-        pass
+        update_slope_data(self.length, self.thickness,
+                          self.slopeargs, self.quantity)
+        self.outputsheet.sheet = self.quantity
+        self.outputsheet.insert_sheet()
 
 
 class EarthNailInterface(QWidget):
@@ -202,11 +249,14 @@ class AnchorCalbleInterface(QWidget):
 
 class TableInputArgsSlope(QTableWidget):
 
+    valueChanged = pyqtSignal()
+
     def __init__(self):
         super(TableInputArgsSlope, self).__init__(5, 5, parent=None)
 
         # 创建自定义信号，以使外界得以获得内部信号
-        self.valueChanged = pyqtSignal()
+        # 错误的信号定义方式
+        # self.valueChanged = pyqtSignal()
         self.sheet = np.zeros((5, 4))
 
         self.initUI()
@@ -278,8 +328,8 @@ class TableInputArgsSlope(QTableWidget):
 
     def update_value(self):
 
+        # self.blockSignals(True)
         self.valueChanged.emit()
-        self.blockSignals(True)
         # ————————————————————blockSignals方法意义不明————————————————————
         for i in range(self.rowCount()):
             for j in range(1, self.columnCount()):
@@ -288,7 +338,7 @@ class TableInputArgsSlope(QTableWidget):
                     self.sheet[i][j-1] = float(cellwidget.text())
                 except ValueError:
                     pass
-        self.blockSignals(False)
+        # self.blockSignals(False)
 
 
 class TableOutputArgsSlope(QTableWidget):
