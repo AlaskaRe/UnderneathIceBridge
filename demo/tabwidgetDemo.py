@@ -329,7 +329,7 @@ class TableInputArgsSlope(QTableWidget):
     def update_value(self):
 
         # self.blockSignals(True)
-        self.valueChanged.emit()
+
         # ————————————————————blockSignals方法意义不明————————————————————
         for i in range(self.rowCount()):
             for j in range(1, self.columnCount()):
@@ -338,6 +338,7 @@ class TableInputArgsSlope(QTableWidget):
                     self.sheet[i][j-1] = float(cellwidget.text())
                 except ValueError:
                     pass
+        self.valueChanged.emit()
         # self.blockSignals(False)
 
 
