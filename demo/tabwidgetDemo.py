@@ -11,10 +11,8 @@ from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
 from numpy.core.fromnumeric import shape
 
-# 定义一些常量
+# 定义常量
 DECIMAL = 3
-
-# 定义计算函数
 
 
 def cal_slope_length(horizental: float, vertical: float, ratio: float):
@@ -64,6 +62,13 @@ def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.nda
     sum_last_row = np.sum(opt_sht_slp, axis=0)
     for i in range(4):
         opt_sht_slp[5][i] = sum_last_row[i]
+
+
+def cal_earth_nail_length(spt_stc_length: float, earth_nail_sheet: np.ndarray(shape=(15, 3))):
+
+    for i in range(15):
+        earth_nail_sheet[i][2] = earth_nail_sheet[i][0] * \
+            math.ceil(spt_stc_length/earth_nail_sheet[i][1])
 
 
 class DigitValidator(QDoubleValidator):
@@ -131,7 +136,6 @@ class TabPage(QTabWidget):
 class SlopeInterface(QWidget):
     def __init__(self):
         super(SlopeInterface, self).__init__()
-        # 定义一些参数
 
         self.length = 0
         self.thickness = 0
@@ -254,9 +258,6 @@ class TableInputArgsSlope(QTableWidget):
     def __init__(self):
         super(TableInputArgsSlope, self).__init__(5, 5, parent=None)
 
-        # 创建自定义信号，以使外界得以获得内部信号
-        # 错误的信号定义方式
-        # self.valueChanged = pyqtSignal()
         self.sheet = np.zeros((5, 4))
 
         self.initUI()
@@ -328,9 +329,6 @@ class TableInputArgsSlope(QTableWidget):
 
     def update_value(self):
 
-        # self.blockSignals(True)
-
-        # ————————————————————blockSignals方法意义不明————————————————————
         for i in range(self.rowCount()):
             for j in range(1, self.columnCount()):
                 cellwidget = self.cellWidget(i, j)
@@ -339,7 +337,6 @@ class TableInputArgsSlope(QTableWidget):
                 except ValueError:
                     pass
         self.valueChanged.emit()
-        # self.blockSignals(False)
 
 
 class TableOutputArgsSlope(QTableWidget):
@@ -413,9 +410,11 @@ class TableOutputArgsSlope(QTableWidget):
 
 class TableEarthNail(QTableWidget):
 
+    valueChanged = pyqtSignal()
+
     def __init__(self):
         super(TableEarthNail, self).__init__(15, 5, parent=None)
-        self.sheet = np.zeros((15, 4))
+        self.sheet = np.zeros((15, 3))
         self.initUI()
 
     def initUI(self):
@@ -441,19 +440,19 @@ class TableEarthNail(QTableWidget):
                     # 设置第一列为序号
                     self.setItem(j, i, QTableWidgetItem(str(j+1)))
                 elif i == 3:
-
                     # 设置为下拉菜单选项
                     earthnail_combox = QComboBox()
                     earthnail_combox.addItems(['钢筋', '锚索', '锚杆'])
                     self.setCellWidget(j, i, earthnail_combox)
                     # earthnail_combox.currentIndexChanged.connect()
                 elif i == 4:
-                    self.setItem(j, i, QTableWidgetItem('0'))
+                    sum = str(self.sheet[j][i-2])
+                    self.setItem(j, i, QTableWidgetItem(sum))
                 else:
                     cellwidget = QLineEdit()
                     cellwidget.setValidator(ordnary_validator)
                     self.setCellWidget(j, i, cellwidget)
-                    # cellwidget.textChanged.connect(self.update_value)
+                    cellwidget.textChanged.connect(self.update_value)
 
         # 4.限制表格行为
         #   设置表格无法选中
@@ -480,8 +479,18 @@ class TableEarthNail(QTableWidget):
     def get_value(self):
         return self.sheet
 
+    def update_last_sum(self):
+        """
+        表格内前两列数据发生变化，即更新最后一列
+        并将更新后的数据写入显示的表格中
+        """
+        for i in range(15):
+            data = str(self.sheet[i][2])
+            self.setItem(i, 2, QTableWidgetItem(data))
+
     def update_value(self):
-        pass
+
+        for i in range()
 
 
 class InputText(QLineEdit):
@@ -493,9 +502,6 @@ class InputText(QLineEdit):
 
         self.setValidator(ordnary_validator)
         self.textChanged.connect(self.update_value)
-
-        # 线程启动，传出数据，调用函数
-        # self.textChanged.connect(slopeprogress.start)
 
     def get_value(self):
         return self.input_value
