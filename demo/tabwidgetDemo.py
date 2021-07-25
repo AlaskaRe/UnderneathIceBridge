@@ -64,11 +64,14 @@ def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.nda
         opt_sht_slp[5][i] = sum_last_row[i]
 
 
-def cal_earth_nail_length(spt_stc_length: float, earth_nail_sheet: np.ndarray(shape=(15, 3))):
+def cal_earth_nail_length(spt_stc_length: float, earth_nail_sheet: np.ndarray(shape=(15, 2)), earth_nail_sum: np.ndarray((15, 1))):
 
-    for i in range(15):
-        earth_nail_sheet[i][2] = earth_nail_sheet[i][0] * \
-            math.ceil(spt_stc_length/earth_nail_sheet[i][1])
+    try:
+        for i in range(15):
+            earth_nail_sum[i][0] = (
+                math.ceil(spt_stc_length/earth_nail_sheet[i][1])+1)*earth_nail_sheet[i][0]
+    except OverflowError:
+        pass
 
 
 class DigitValidator(QDoubleValidator):
@@ -209,7 +212,13 @@ class SlopeInterface(QWidget):
 class EarthNailInterface(QWidget):
     def __init__(self):
         super(EarthNailInterface, self).__init__()
+        self.length = 0
+        self.thickness = 0
+        self.earthnailargs = np.zeros((15, 2))
+        self.earthnailtotal = np.zeros((15, 1))
+
         self.initUI()
+        self.make_connection()
 
     def initUI(self):
         self.label_supportlength = QLabel("支护长度/m")
@@ -235,6 +244,29 @@ class EarthNailInterface(QWidget):
         up_layout.addWidget(self.interfacesheet)
 
         self.setLayout(up_layout)
+
+    def make_connection(self):
+
+        self.linedit_supportlength.textChanged.connect(
+            self.update_struct_length)
+        self.linedit_slopethickness.textChanged.connect(
+            self.update_slopethickness)
+        self.interfacesheet.valueChanged.connect(self.update_sumlength)
+
+    def update_struct_length(self):
+        self.length = self.linedit_supportlength.get_value()
+        self.update_sumlength()
+
+    def update_slopethickness(self):
+        self.thickness = self.linedit_slopethickness.get_value()
+        self.update_sumlength()
+
+    def update_sumlength(self):
+        self.earthnailargs = self.interfacesheet.get_args()
+        cal_earth_nail_length(
+            self.length, self.earthnailargs, self.earthnailtotal)
+        self.interfacesheet.sumlength = self.earthnailtotal
+        self.interfacesheet.update_sum()
 
 
 class AnchorCalbleInterface(QWidget):
@@ -414,7 +446,8 @@ class TableEarthNail(QTableWidget):
 
     def __init__(self):
         super(TableEarthNail, self).__init__(15, 5, parent=None)
-        self.sheet = np.zeros((15, 3))
+        self.args_sheet = np.zeros((15, 2))
+        self.sumlength = np.zeros((15, 1))
         self.initUI()
 
     def initUI(self):
@@ -446,13 +479,13 @@ class TableEarthNail(QTableWidget):
                     self.setCellWidget(j, i, earthnail_combox)
                     # earthnail_combox.currentIndexChanged.connect()
                 elif i == 4:
-                    sum = str(self.sheet[j][i-2])
+                    sum = str(self.sumlength[j][0])
                     self.setItem(j, i, QTableWidgetItem(sum))
                 else:
                     cellwidget = QLineEdit()
                     cellwidget.setValidator(ordnary_validator)
                     self.setCellWidget(j, i, cellwidget)
-                    cellwidget.textChanged.connect(self.update_value)
+                    cellwidget.textChanged.connect(self.update_args)
 
         # 4.限制表格行为
         #   设置表格无法选中
@@ -476,21 +509,33 @@ class TableEarthNail(QTableWidget):
         #   设置最后一列不可更改
         self.setItemDelegateForColumn(4, EmptyDelegate(self))
 
-    def get_value(self):
-        return self.sheet
+    def get_sum(self):
+        return self.sumlength
 
-    def update_last_sum(self):
+    def get_args(self):
+        return self.args_sheet
+
+    def update_sum(self):
         """
         表格内前两列数据发生变化，即更新最后一列
         并将更新后的数据写入显示的表格中
         """
         for i in range(15):
-            data = str(self.sheet[i][2])
-            self.setItem(i, 2, QTableWidgetItem(data))
+            data = str(self.sumlength[i][0])
+            self.setItem(i, 4, QTableWidgetItem(data))
 
-    def update_value(self):
+    def update_args(self):
 
-        for i in range()
+        for i in range(self.rowCount()):
+            try:
+                single_length = float(self.cellWidget(i, 1).text())
+                self.args_sheet[i][0] = single_length
+                horizontial_gap = float(self.cellWidget(i, 2).text())
+                self.args_sheet[i][1] = horizontial_gap
+            except ValueError:
+                pass
+
+        self.valueChanged.emit()
 
 
 class InputText(QLineEdit):
