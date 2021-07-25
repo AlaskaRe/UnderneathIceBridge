@@ -66,12 +66,12 @@ def update_slope_data(spt_stc_length: float, slp_thk: float, ipt_sht_slp: np.nda
 
 def cal_earth_nail_length(spt_stc_length: float, earth_nail_sheet: np.ndarray(shape=(15, 2)), earth_nail_sum: np.ndarray((15, 1))):
 
-    try:
-        for i in range(15):
+    for i in range(15):
+        try:
             earth_nail_sum[i][0] = (
                 math.ceil(spt_stc_length/earth_nail_sheet[i][1])+1)*earth_nail_sheet[i][0]
-    except OverflowError:
-        pass
+        except OverflowError:
+            pass
 
 
 class DigitValidator(QDoubleValidator):
@@ -130,10 +130,21 @@ class TabPage(QTabWidget):
         # 创建选项卡窗口
         self.slopepage = SlopeInterface()
         self.earthnailpage = EarthNailInterface()
+        self.undeveloppage = UnderDevelopedPage()
 
         # 将选项卡添加到顶层窗口中
         self.addTab(self.slopepage, "放坡支护")
         self.addTab(self.earthnailpage, "土钉支护")
+        self.addTab(self.undeveloppage, "休息了")
+
+
+class UnderDevelopedPage(QWidget):
+    def __init__(self):
+        super(UnderDevelopedPage, self).__init__()
+        self.label = QLabel("你们自己玩吧，我想休息了")
+        self.ui = QVBoxLayout()
+        self.ui.addWidget(self.label)
+        self.setLayout(self.ui)
 
 
 class SlopeInterface(QWidget):
@@ -263,10 +274,13 @@ class EarthNailInterface(QWidget):
 
     def update_sumlength(self):
         self.earthnailargs = self.interfacesheet.get_args()
-        cal_earth_nail_length(
-            self.length, self.earthnailargs, self.earthnailtotal)
-        self.interfacesheet.sumlength = self.earthnailtotal
-        self.interfacesheet.update_sum()
+        try:
+            cal_earth_nail_length(
+                self.length, self.earthnailargs, self.earthnailtotal)
+            self.interfacesheet.sumlength = self.earthnailtotal
+            self.interfacesheet.update_sum()
+        except ValueError:
+            pass
 
 
 class AnchorCalbleInterface(QWidget):
